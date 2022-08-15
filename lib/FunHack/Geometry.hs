@@ -1,6 +1,6 @@
 -- | Data types and functions for dealing with world geometry
 
-module Geometry
+module FunHack.Geometry
     (
         -- * Coordinates and distances
         Coord,
@@ -25,9 +25,10 @@ module Geometry
         -- ** Rectangle operations
         rectangleIntersection,
         splitRectangleAround
-    ) wwhere
+    ) where
 
-import Data.Int
+import Data.Int (Int64)
+import Data.Maybe (catMaybes)
 
 -- | A numeric coordinate (may be positive or negative)
 type Coord = Int64
@@ -41,9 +42,9 @@ data Point2D = Point2D {
     x :: Coord,
 
     -- | The Y coordinate
-    y :: Coord,
+    y :: Coord
     }
-    deriving stock (Eq, Ord, Show)
+    deriving stock (Eq, Show)
 
 -- | A three-dimensional point
 data Point3D = Point3D {
@@ -56,7 +57,7 @@ data Point3D = Point3D {
     -- | The Z coordinate
     z :: Coord
     }
-    deriving stock (Eq, Ord, Show)
+    deriving stock (Eq, Show)
 
 -- | A two-dimensional aligned rectangle. A rectangle has an origin point in
 -- three-dimensional space, and width and height in two-dimensional space.
@@ -82,15 +83,17 @@ makeRectangle
     -> Distance -- ^ Width of the rectangle
     -> Distance -- ^Height of the rectangle
     -> Rectangle
-makeRectangle !orig !width !height
+makeRectangle orig width height
     = let (x, width') = normalize orig.x width
           (y, height') = normalize orig.y height
       in Rectangle {
-             origin = Point3D { x = x, y = y, z = orig.z },
+             origin = Point3D x y orig.z,
              width = width',
              height = height'
          }
     where
+      -- | Normalize a coordinate and distance such that the distance is
+      -- positive, possibly adjusting the coordinate accordingly.
       normalize :: Coord -> Distance -> (Coord, Distance)
       normalize coord dist
           | dist < 0 = (coord + dist, abs dist)
@@ -108,16 +111,16 @@ makeRectangleFromCornerPoints
     -> Point3D -- ^ The opposite corner of the rectangle
     -> Maybe Rectangle -- ^ The resulting rectangle, if it is possible to create it
 makeRectangleFromCornerPoints a b
-    | a.z != b.z = Nothing
+    | a.z /= b.z = Nothing
     | otherwise
     = let x1 = min a.x b.x
           y1 = min a.y b.y
-          x2 = max a.origin.x b.origin.x
+          x2 = max a.x b.x
           y2 = max a.y b.y
           width = x2 - x1 + 1
           height = y2 - y1 + 1
       in Just $! Rectangle {
-             origin = Point3D $! x1 y1
+             origin = Point3D x1 y1 a.z,
              width = width,
              height = height
          }
@@ -136,8 +139,14 @@ rectanglesIntersect a b
       && (not (isOnLeft a b || isOnLeft b a))
       && (not (isAbove a b || isAbove b a))
   where
-    isOnLeft a' b' = a'.origin.x + a.origin.width < b'.origin.x
-    isAbove a' b' = a'.origin.y + a.origin.height < b'.origin.y
+    -- | Determine if the first rectangle is completely on the left isde of
+    -- the second rectangle.
+    isOnLeft :: Rectangle -> Rectangle -> Bool
+    isOnLeft a' b' = a'.origin.x + a.width < b'.origin.x
+
+    -- | Determine if the first rectangle is completely above the second rectangle.
+    isAbove :: Rectangle -> Rectangle -> Bool
+    isAbove a' b' = a'.origin.y + a.height < b'.origin.y
 
 -- | Determine if the first rectangle completely contains the second one.
 containsRectangle
@@ -163,7 +172,7 @@ containsRectangle super sub
 -- | Return an intersection of two rectangles. If the rectangles do not overlap, Nothing is returned.
 rectangleIntersection :: Rectangle -> Rectangle -> Maybe Rectangle
 rectangleIntersection a b
-    | a.origin.z != b.origin.z = Nothing
+    | a.origin.z /= b.origin.z = Nothing
     | otherwise
     = let x1 = max a.origin.x b.origin.x
           y1 = max a.origin.y b.origin.y
@@ -174,7 +183,7 @@ rectangleIntersection a b
       in if width < 0 || height < 0
       then Nothing
       else Just $! Rectangle {
-               origin = Point3D $! x1 y1,
+               origin = Point3D x1 y1 a.origin.z,
                width = width,
                height = height
            }
@@ -198,7 +207,8 @@ splitRectangleAround
     -> Rectangle -- ^ A sub rectangle that will be "extracted out" of the super rectangle
     -> Maybe [Rectangle] -- ^ New subrectangles as a list embedded in Maybe
 splitRectangleAround super sub
-    = catMaybes $! rectanglesAround
+    | containsRectangle super sub = Nothing
+    | otherwise = Just $! catMaybes $! rectanglesAround
   where
     -- | List of all possible rectangles around the subrectangle.
     rectanglesAround :: [Maybe Rectangle]
@@ -231,12 +241,12 @@ splitRectangleAround super sub
     -- rectangle is nullary or negative in size, return Nothing.
     rectFromCoords :: Coord -> Coord -> Coord -> Coord -> Maybe Rectangle
     rectFromCoords x1 y1 x2 y2
-    = let width = x2 - x1 + 1
-          height = y2 - y1 + 1
-      in if width <= 0 or height <= 0
-        then Nothing
-        else Just $! Rectangle {
-                 origin = Point3D $! x1 y1,
-                 width = width,
-                 height = height
-             }
+        = let width = x2 - x1 + 1
+              height = y2 - y1 + 1
+        in if width <= 0 || height <= 0
+           then Nothing
+           else Just $! Rectangle {
+                    origin = Point3D x1 y1 super.origin.z,
+                    width = width,
+                    height = height
+                }
