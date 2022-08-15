@@ -38,9 +38,15 @@ common general
 
     default-extensions:
         BlockArguments,
+        DerivingStrategies,
+        DuplicateRecordFields,
+        LambdaCase,
+        NoFieldSelectors,
         NoStarIsType,
+        OverloadedRecordDot,
         OverloadedStrings,
         StrictData
+
     default-language: GHC2021
     ghc-options:
         -fshow-warning-groups
