@@ -44,16 +44,6 @@ makeLevelMap
 makeLevelMap width height
     = MV.replicateM (fromIntegral height) (MV.replicate (fromIntegral width) Undefined)
 
--- | Make a NetHack-style level map with the given dimensions.
-makeNetHackLevel
-    :: (MV.PrimMonad m)
-    => Distance -- ^ Width of the level map
-    -> Distance -- ^ Height of the level map
-    -> m (LevelMap (MV.PrimState m))
-makeNetHackLevel width height = do
-    level <- makeLevelMap width height
-    pure $! level
-
 -- | Turn a LevelMap into a Text value for showing. This is mostly useful for debugging.
 showLevelMap
     :: (MV.PrimMonad m)
@@ -76,3 +66,13 @@ showLevelMap = MV.foldM' foldLine T.empty
         RoomWall -> '#'
         Doorway -> '+'
         Corridor -> ','
+
+-- | Make a NetHack-style level map with the given dimensions.
+makeNetHackLevel
+    :: (MV.PrimMonad m)
+    => Distance -- ^ Width of the level map
+    -> Distance -- ^ Height of the level map
+    -> m (LevelMap (MV.PrimState m))
+makeNetHackLevel width height = do
+    level <- makeLevelMap width height
+    pure $! level
