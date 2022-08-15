@@ -1,0 +1,85 @@
+cabal-version: 3.0
+name: funhack
+version: 0.1.0.0
+synopsis: A fun roguelike game written in a functional language
+description:
+    Funhack is a fun programming experimentation – a roguelike game written in Haskell.
+    .
+    It is a toy program. The game is not (and will not) be playable. As said, it is an experimentation for personal testing.
+homepage: https://github.com/Merivuokko/funhack
+license: GPL-3.0-only
+license-file: LICENSE
+author: Aura Kelloniemi
+maintainer: kaura.dev@sange.fi
+extra-source-files:
+    AUTHORS.md
+    CHANGELOG.md
+    README.md
+    .hlint.yaml
+
+source-repository head
+    type: git
+    location: https://github.com/Merivuokko/funhack
+                      
+flag Werror
+    description: Enable -Werror for fixing all warnings
+    default: False
+    manual: True
+
+flag Weverything
+    description: Enable almost every possible warning
+    default: False
+    manual: True
+
+common general
+    build-depends:
+        base ^>= { 4.16, 4.17 },
+        text ^>=2.0
+
+    default-extensions:
+        BlockArguments,
+        NoStarIsType,
+        OverloadedStrings,
+        StrictData
+    default-language: GHC2021
+    ghc-options:
+        -fshow-warning-groups
+
+    if flag(Werror)
+        ghc-options:
+            -Werror
+
+    if flag(Weverything)
+        ghc-options:
+            -Weverything
+            -Wno-all-missed-specialisations
+            -Wno-implicit-prelude
+            -Wno-missed-specialisations
+            -Wno-missing-import-lists
+            -Wno-missing-safe-haskell-mode
+            -Wno-monomorphism-restriction
+            -Wno-safe
+            -Wno-unsafe
+    else
+        ghc-options: -Wall -Wcompat
+
+common funhack-dep
+    build-depends:
+        funhack
+
+library
+    import: general
+    build-depends:
+        vector ^>=0.13
+        -- containers ^>=0.6,
+        -- hashable ^>=0.4,
+        -- mtl ^>=2.3,
+        -- unordered-containers ^>=0.2.15
+    other-modules:
+    hs-source-dirs: lib
+
+test-suite funhack-test
+    import: general, funhack-dep
+    type: exitcode-stdio-1.0
+    hs-source-dirs: test
+    main-is: Main.hs
