@@ -2,13 +2,18 @@
 
 module FunHack.Geometry
     (
-        -- * Coordinates and distances
+        -- * Coordinates, distance and directions
         Coord,
         Distance,
+        Direction2D (..),
 
         -- * Points
         Point2D (..),
         Point3D (..),
+
+        -- ** Point adjustment
+        adjustPointBy,
+        adjustPointTowards,
 
         -- * Rectangles
         Rectangle (origin, width, height),
@@ -36,6 +41,40 @@ type Coord = Int64
 -- | A distance between two coordinate (may be positive or negative)
 type Distance = Int64
 
+-- | Direction2D represents a possible movement direction in a two-dimensional
+-- square grid.
+data Direction2D
+    = Self
+    | North
+    | NorthEast
+    | East
+    | SouthEast
+    | South
+    | SouthWest
+    | West
+    | NorthWest
+    deriving stock (Bounded, Enum, Eq, Ord, Show)
+
+-- | Convert a relative direction to relative steps along the axis. This
+-- function returns a 3-tuple where each value is a relative step on X, Y and
+-- Z axis respectively. THe value can be -1, 0 or 1.
+--
+-- NOTE: Currently only 2D directions are supported.
+directionToSteps :: Direction2D -> (Distance, Distance, Distance)
+directionToSteps dir
+    = let (x, y) = case dir of
+                       Self -> (0, 0)
+                       North -> (0, -1)
+                       NorthEast -> (1, -1)
+                       East -> (1, 0)
+                       SouthEast -> (1, 1)
+                       South -> (0, 1)
+                       SouthWest -> (-1, 1)
+                       West -> (-1, 0)
+                       NorthWest -> (-1, -1)
+          z = 0
+      in (x, y, z)
+
 -- | A two-dimensional point
 data Point2D = Point2D {
     -- | The X coordinate
@@ -58,6 +97,25 @@ data Point3D = Point3D {
     z :: Coord
     }
     deriving stock (Eq, Show)
+
+-- | Adjust a point's location relatively by steps.
+adjustPointBy
+    :: Point3D -- ^hhe point to move
+    -> Distance -- ^ Distance on X axis
+    -> Distance -- ^ Distance on Y axis
+    -> Distance -- ^ Distance on Z axis
+    -> Point3D
+adjustPointBy p x y z = Point3D (p.x + x) (p.y + y) (p.z + z)
+
+-- | Adjust a point's location relatively towards a given direction by the given number of steps.
+adjustPointTowards
+    :: Point3D -- ^ The point to adjust
+    -> Direction2D -- ^ The direction towards to adjust
+    -> Distance -- ^ The number of steps
+    -> Point3D
+adjustPointTowards point dir steps
+    = let (x, y, z) = directionToSteps dir
+      in adjustPointBy point (x * steps) (y * steps) (z * steps)
 
 -- | A two-dimensional aligned rectangle. A rectangle has an origin point in
 -- three-dimensional space, and width and height in two-dimensional space.
