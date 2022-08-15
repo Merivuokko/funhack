@@ -82,6 +82,7 @@ library
         -- mtl ^>=2.3,
         -- unordered-containers ^>=0.2.15
     exposed-modules:
+        FunHack.DungeonGenerator,
         FunHack.Geometry
     other-modules:
     hs-source-dirs: lib
