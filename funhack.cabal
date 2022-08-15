@@ -75,6 +75,8 @@ library
         -- hashable ^>=0.4,
         -- mtl ^>=2.3,
         -- unordered-containers ^>=0.2.15
+    exposed-modules:
+        FunHack.Geometry
     other-modules:
     hs-source-dirs: lib
 
