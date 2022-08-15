@@ -7,10 +7,15 @@ module FunHack.DungeonGenerator
 
         -- * Level map
         LevelMap,
-        makeLevelMap
+        makeLevelMap,
+        showLevelMap,
+
+        -- * Dungeon generation
+        makeNetHackLevel
     ) where
 
-import Data.Vector.Mutable as MV
+import Data.Text qualified as T
+import Data.Vector.Mutable qualified as MV
 
 import FunHack.Geometry
 
@@ -38,3 +43,36 @@ makeLevelMap
     -> m (LevelMap (MV.PrimState m))
 makeLevelMap width height
     = MV.replicateM (fromIntegral height) (MV.replicate (fromIntegral width) Undefined)
+
+-- | Make a NetHack-style level map with the given dimensions.
+makeNetHackLevel
+    :: (MV.PrimMonad m)
+    => Distance -- ^ Width of the level map
+    -> Distance -- ^ Height of the level map
+    -> m (LevelMap (MV.PrimState m))
+makeNetHackLevel width height = do
+    level <- makeLevelMap width height
+    pure $! level
+
+-- | Turn a LevelMap into a Text value for showing. This is mostly useful for debugging.
+showLevelMap
+    :: (MV.PrimMonad m)
+    => LevelMap (MV.PrimState m)
+    -> m T.Text
+showLevelMap = MV.foldM' foldLine T.empty
+  where
+    foldLine :: (MV.PrimMonad m) => T.Text -> MV.MVector (MV.PrimState m) LevelCell -> m T.Text
+    foldLine prefix line = do
+        textLine <- MV.foldl' cellsToText T.empty line
+        pure $! prefix <> textLine <> "\n"
+
+    cellsToText :: T.Text -> LevelCell -> T.Text
+    cellsToText prefix cell = prefix <> (T.singleton $! cellChar $! cell)
+
+    cellChar :: LevelCell -> Char
+    cellChar cell = case cell of
+        Undefined -> '_'
+        RoomFloor -> '.'
+        RoomWall -> '#'
+        Doorway -> '+'
+        Corridor -> ','
