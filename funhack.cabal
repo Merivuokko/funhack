@@ -84,12 +84,13 @@ library
     exposed-modules:
         FunHack.DungeonGenerator,
         FunHack.Geometry
+    other-modules:
+    hs-source-dirs: lib
 
 executable funhack
     import: general, funhack-dep
     hs-source-dirs: src
     main-is: Main.hs
-    other-modules:
 
 test-suite funhack-test
     import: general, funhack-dep
