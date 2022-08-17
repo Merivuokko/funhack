@@ -175,14 +175,14 @@ makeRooms
     -> Rectangle -- ^ The bounding rectangle for the created rooms
     -> m [Room]
 makeRooms level rect = do
-    go [] [rect]
+    loop [] [rect]
   where
     -- | Recursively create rooms in one of the provided rectangles. Already
     -- created rooms are passed as the first argument. Finally all created
     -- rooms are returned.
-    go :: [Room] -> [Rectangle] -> m [Room]
-    go rooms [] = pure $! rooms
-    go rooms (r : rects) = do
+    loop :: [Room] -> [Rectangle] -> m [Room]
+    loop rooms [] = pure $! rooms
+    loop rooms (r : rects) = do
         let roomRect = makeRectangle (Point3D r.origin.x r.origin.y r.origin.z) ((r.width `div` 2) - 1) ((r.height `div` 2) - 1)
         room <- makeRoom level roomRect
 
