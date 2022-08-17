@@ -24,7 +24,9 @@ module FunHack.DungeonGenerator
         makeRooms
     ) where
 
+import Control.Monad (forM_)
 import Control.Monad.Primitive (PrimMonad, PrimState)
+import Data.Bool (bool)
 import Data.Text qualified as T
 import Data.Vector.Mutable qualified as MV
 
@@ -134,7 +136,7 @@ makeNetHackLevel width height = do
 
     -- Create rooms
     let levelRect = makeRectangle (Point3D 0 0 0) width height
-    rooms <- makeRooms level levelRect
+    _rooms <- makeRooms level levelRect
     pure $! level
 
 -- | A room descriptor contains all necessary information to place a room on a
@@ -158,7 +160,21 @@ makeRoom
     -> Rectangle -- ^ The rectangle that the rooms should occupy
     -> m Room
 makeRoom level rect = do
+    let allPoints = [ Point3D x y rect.origin.z
+                    | x <- [rect.origin.x .. rect.origin.x + rect.width - 1],
+                      y <- [rect.origin.y .. rect.origin.y + rect.height - 1] ]
+    forM_ allPoints \p -> do
+        let cell = bool RoomWall RoomFloor $! (isInner p)
+        writeLevelMap p cell level
     pure $! Room rect 0 []
+  where
+    -- | Determine if a point is inside the region and not on its edge.
+    isInner :: Point3D -> Bool
+    isInner (Point3D { x, y })
+        = y > rect.origin.y
+          && y < rect.origin.y + rect.height - 1
+          && x > rect.origin.x
+          && x < rect.origin.x + rect.width - 1
 
 -- | Make rooms on a level map and return them as a list.
 --
@@ -174,20 +190,26 @@ makeRooms
     => LevelMap (PrimState m) -- ^ Map of the level (this is odified in place)
     -> Rectangle -- ^ The bounding rectangle for the created rooms
     -> m [Room]
-makeRooms level rect = do
-    loop [] [rect]
+makeRooms level levelRect = do
+    let z = levelRect.origin.z
+    let rects = [ makeRectangle (Point3D 1 1 z) 5 5,
+                  makeRectangle (Point3D 10 3 z) 10 6,
+                  makeRectangle (Point3D 20 12 z) 4 4,
+                  makeRectangle (Point3D 12 14 z) 7 5
+                ]
+    loop rects >>= (pure $!) -- \result -> result `seq` result
   where
-    -- | Recursively create rooms in one of the provided rectangles. Already
-    -- created rooms are passed as the first argument. Finally all created
-    -- rooms are returned.
-    loop :: [Room] -> [Rectangle] -> m [Room]
-    loop rooms [] = pure $! rooms
-    loop rooms (r : rects) = do
-        let roomRect = makeRectangle (Point3D r.origin.x r.origin.y r.origin.z) ((r.width `div` 2) - 1) ((r.height `div` 2) - 1)
-        room <- makeRoom level roomRect
+    -- | Recursively create rooms in one of the provided rectangles.
+    -- Descriptors for created rooms are returned
+    loop :: [Rectangle] -> m [Room]
+    loop [] = pure $! []
+    loop (r : rects) = do
+        !room <- makeRoom level r
+        !rooms <- loop rects
+        pure $! room : rooms
 
-        let rectsAround = case splitRectangleAround r roomRect of
-                              Just rs -> rs
-                              Nothing -> error "Bad rectangle splitting"
-            rects' = rectsAround <> rects
-        pure $! (room : rooms)
+        -- let rectsAround = case splitRectangleAround r roomRect of
+        --                       Just rs -> rs
+        --                       Nothing -> error "Bad rectangle splitting"
+        --     rects' = rectsAround <> rects
+        -- pure $! (room : rooms)
