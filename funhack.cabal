@@ -76,6 +76,7 @@ common funhack-dep
 library
     import: general
     build-depends:
+        primitive ^>=0.7.4,
         vector ^>=0.13
         -- containers ^>=0.6,
         -- hashable ^>=0.4,

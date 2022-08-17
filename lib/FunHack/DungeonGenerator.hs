@@ -24,6 +24,7 @@ module FunHack.DungeonGenerator
         makeRooms
     ) where
 
+import Control.Monad.Primitive (PrimMonad, PrimState)
 import Data.Text qualified as T
 import Data.Vector.Mutable qualified as MV
 
@@ -47,21 +48,21 @@ type LevelMap s = MV.MVector s (MV.MVector s LevelCell)
 
 -- | Make a new empty level map with the provided dimensions.
 makeLevelMap
-    :: (MV.PrimMonad m)
+    :: (PrimMonad m)
     => Distance -- ^ Width of the level map
     -> Distance -- ^ Height of the level map
-    -> m (LevelMap (MV.PrimState m))
+    -> m (LevelMap (PrimState m))
 makeLevelMap width height
     = MV.replicateM (fromIntegral height) (MV.replicate (fromIntegral width) Undefined)
 
 -- | Turn a LevelMap into a Text value for showing. This is mostly useful for debugging.
 showLevelMap
-    :: (MV.PrimMonad m)
-    => LevelMap (MV.PrimState m)
+    :: (PrimMonad m)
+    => LevelMap (PrimState m)
     -> m T.Text
 showLevelMap = MV.foldM' foldLine T.empty
   where
-    foldLine :: (MV.PrimMonad m) => T.Text -> MV.MVector (MV.PrimState m) LevelCell -> m T.Text
+    foldLine :: (PrimMonad m) => T.Text -> MV.MVector (PrimState m) LevelCell -> m T.Text
     foldLine prefix line = do
         textLine <- MV.foldl' cellsToText T.empty line
         pure $! prefix <> textLine <> "\n"
@@ -81,9 +82,9 @@ showLevelMap = MV.foldM' foldLine T.empty
 --
 -- This function fails with an exception if the location is invalid.
 readLevelMap
-    :: (MV.PrimMonad m)
+    :: (PrimMonad m)
     => Point3D -- ^ The cell location
-    -> LevelMap (MV.PrimState m) -- ^ The map to read from
+    -> LevelMap (PrimState m) -- ^ The map to read from
     -> m LevelCell
 readLevelMap point lmap
     = let x = fromIntegral point.x
@@ -94,10 +95,10 @@ readLevelMap point lmap
 --
 -- This function fails with an exception, if hte location is invalid.
 writeLevelMap
-    :: (MV.PrimMonad m)
+    :: (PrimMonad m)
     => Point3D -- ^ The cell location
     -> LevelCell -- ^ The new cell value
-    -> LevelMap (MV.PrimState m) -- ^ The map to read from
+    -> LevelMap (PrimState m) -- ^ The map to read from
     -> m ()
 writeLevelMap point value lmap
     = let x = fromIntegral point.x
@@ -108,10 +109,10 @@ writeLevelMap point value lmap
 --
 -- This function fails with an exception, if hte location is invalid.
 modifyLevelMap
-    :: (MV.PrimMonad m)
+    :: (PrimMonad m)
     => Point3D -- ^ The cell location
     -> (LevelCell -> LevelCell) -- ^ A function called with the old value and which produces a new cell value
-    -> LevelMap (MV.PrimState m) -- ^ The map to read from
+    -> LevelMap (PrimState m) -- ^ The map to read from
     -> m ()
 modifyLevelMap point f lmap
     = let x = fromIntegral point.x
@@ -123,10 +124,10 @@ modifyLevelMap point f lmap
 
 -- | Make a NetHack-style level map with the given dimensions.
 makeNetHackLevel
-    :: (MV.PrimMonad m)
+    :: (PrimMonad m)
     => Distance -- ^ Width of the level map
     -> Distance -- ^ Height of the level map
-    -> m (LevelMap (MV.PrimState m))
+    -> m (LevelMap (PrimState m))
 makeNetHackLevel width height = do
     -- Create level map
     level <- makeLevelMap width height
@@ -152,8 +153,8 @@ data Room = Room {
 -- | Make a room and place it on a level map. This modifies the map in place
 -- and returns a room description.
 makeRoom
-    :: (MV.PrimMonad m)
-    => LevelMap (MV.PrimState m) -- ^ Map to put the room on
+    :: (PrimMonad m)
+    => LevelMap (PrimState m) -- ^ Map to put the room on
     -> Rectangle -- ^ The rectangle that the rooms should occupy
     -> m Room
 makeRoom level rect = do
@@ -169,8 +170,8 @@ makeRoom level rect = do
 -- created. If the rectangle is bigger than the allocated map, bad things will
 -- happen.
 makeRooms
-    :: forall m. (MV.PrimMonad m)
-    => LevelMap (MV.PrimState m) -- ^ Map of the level (this is odified in place)
+    :: forall m. (PrimMonad m)
+    => LevelMap (PrimState m) -- ^ Map of the level (this is odified in place)
     -> Rectangle -- ^ The bounding rectangle for the created rooms
     -> m [Room]
 makeRooms level rect = do
