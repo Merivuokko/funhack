@@ -11,6 +11,9 @@ module FunHack.Geometry
         Point2D (..),
         Point3D (..),
 
+        -- ** Distance calculation
+        pointDistance,
+        
         -- ** Point adjustment
         adjustPointBy,
         adjustPointTowards,
@@ -98,6 +101,17 @@ data Point3D = Point3D {
     }
     deriving stock (Eq, Show)
 
+-- | Calculate the distance between two points using the Pythagorean theorem.
+--
+-- Note that the result value is a floating point number and not of the
+-- `Distance` type. This is so that the distance can be presented exactly.
+pointDistance :: Floating a => Point3D -> Point3D -> a
+pointDistance a b
+    = let dx = fromIntegral (a.x - b.x)
+          dy = fromIntegral (a.y - b.y)
+          dz = fromIntegral (a.z - b.z)
+      in sqrt $! (dx ^ 2) + (dy ^ 2) + (dz ^ 2)
+         
 -- | Adjust a point's location relatively by steps.
 adjustPointBy
     :: Point3D -- ^hhe point to move
