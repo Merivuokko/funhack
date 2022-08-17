@@ -1,4 +1,4 @@
--- | Simple NetHack-like dungeon leel generator
+-- | Simple NetHack-like dungeon level generator
 
 module FunHack.DungeonGenerator
     (
