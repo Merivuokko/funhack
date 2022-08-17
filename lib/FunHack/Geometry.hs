@@ -185,9 +185,7 @@ makeRectangleFromCornerPoints a b
 
 -- | Determine if a rectangle has no area.
 nullRectangle :: Rectangle -> Bool
-nullRectangle rect
-    | rect.width == 0 || rect.height == 0 = True
-    | otherwise = False
+nullRectangle rect = rect.width == 0 || rect.height == 0
 
 -- | Determine if two rectangles intersect. A rectangle that has no area is
 -- considered to intersect with other rectangles (and itself). Rectangles do not intersect if their Z coordinate is not equal.
@@ -200,11 +198,11 @@ rectanglesIntersect a b
     -- | Determine if the first rectangle is completely on the left isde of
     -- the second rectangle.
     isOnLeft :: Rectangle -> Rectangle -> Bool
-    isOnLeft a' b' = a'.origin.x + a.width < b'.origin.x
+    isOnLeft a' b' = a'.origin.x + a.width <= b'.origin.x
 
     -- | Determine if the first rectangle is completely above the second rectangle.
     isAbove :: Rectangle -> Rectangle -> Bool
-    isAbove a' b' = a'.origin.y + a.height < b'.origin.y
+    isAbove a' b' = a'.origin.y + a.height <= b'.origin.y
 
 -- | Determine if the first rectangle completely contains the second one.
 containsRectangle
@@ -214,13 +212,13 @@ containsRectangle
 containsRectangle super sub
     = let superLeft = super.origin.x
           superTop = super.origin.y
-          superRight = superLeft + super.width
-          superBottom = superTop + super.height
+          superRight = superLeft + super.width - 1
+          superBottom = superTop + super.height - 1
 
           subLeft = sub.origin.x
           subTop = sub.origin.y
-          subRight = subLeft + sub.width
-          subBottom = subTop + sub.height
+          subRight = subLeft + sub.width - 1
+          subBottom = subTop + sub.height - 1
       in super.origin.z == sub.origin.z
       && superLeft <= subLeft
       && superTop <= subTop
@@ -234,10 +232,10 @@ rectangleIntersection a b
     | otherwise
     = let x1 = max a.origin.x b.origin.x
           y1 = max a.origin.y b.origin.y
-          x2 = min (a.origin.x + a.width) (b.origin.x + b.width)
-          y2 = min (a.origin.y + a.height) (b.origin.y + b.height)
-          width = x2 - x1
-          height = y2 - y1
+          x2 = min (a.origin.x + a.width - 1) (b.origin.x + b.width - 1)
+          y2 = min (a.origin.y + a.height - 1) (b.origin.y + b.height - 1)
+          width = x2 - x1 + 1
+          height = y2 - y1 + 1
       in if width < 0 || height < 0
       then Nothing
       else Just $! Rectangle {
@@ -273,13 +271,13 @@ splitRectangleAround super sub
     rectanglesAround
         = let superLeft = super.origin.x
               superTop = super.origin.y
-              superRight = superLeft + super.width
-              superBottom = superTop + super.height
+              superRight = superLeft + super.width - 1
+              superBottom = superTop + super.height - 1
 
               subLeft = sub.origin.x
               subTop = sub.origin.y
-              subRight = subLeft + sub.width
-              subBottom = subTop + sub.height
+              subRight = subLeft + sub.width - 1
+              subBottom = subTop + sub.height - 1
       in [ -- Top row
            rectFromCoords superLeft superTop (subLeft - 1) (subTop - 1),
            rectFromCoords subLeft superTop subRight (subTop - 1),
