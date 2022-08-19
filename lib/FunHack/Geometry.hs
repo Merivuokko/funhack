@@ -13,7 +13,7 @@ module FunHack.Geometry
 
         -- ** Distance calculation
         pointDistance,
-        
+
         -- ** Point adjustment
         adjustPointBy,
         adjustPointTowards,
@@ -111,7 +111,7 @@ pointDistance a b
           dy = fromIntegral (a.y - b.y)
           dz = fromIntegral (a.z - b.z)
       in sqrt $! (dx ^ (2 :: Int)) + (dy ^ (2 :: Int)) + (dz ^ (2 :: Int))
-         
+
 -- | Adjust a point's location relatively by steps.
 adjustPointBy
     :: Point3D -- ^hhe point to move
@@ -164,7 +164,7 @@ makeRectangle orig width height
              height = height'
          }
     where
-      -- | Normalize a coordinate and distance such that the distance is
+      -- Normalize a coordinate and distance such that the distance is
       -- positive, possibly adjusting the coordinate accordingly.
       normalize :: Coord -> Distance -> (Coord, Distance)
       normalize coord dist
@@ -209,12 +209,12 @@ rectanglesIntersect a b
       && (not (isOnLeft a b || isOnLeft b a))
       && (not (isAbove a b || isAbove b a))
   where
-    -- | Determine if the first rectangle is completely on the left isde of
+    -- Determine if the first rectangle is completely on the left isde of
     -- the second rectangle.
     isOnLeft :: Rectangle -> Rectangle -> Bool
     isOnLeft a' b' = a'.origin.x + a.width <= b'.origin.x
 
-    -- | Determine if the first rectangle is completely above the second rectangle.
+    -- Determine if the first rectangle is completely above the second rectangle.
     isAbove :: Rectangle -> Rectangle -> Bool
     isAbove a' b' = a'.origin.y + a.height <= b'.origin.y
 
@@ -280,7 +280,7 @@ splitRectangleAround super sub
     | containsRectangle super sub = Nothing
     | otherwise = Just $! catMaybes $! rectanglesAround
   where
-    -- | List of all possible rectangles around the subrectangle.
+    -- List of all possible rectangles around the subrectangle.
     rectanglesAround :: [Maybe Rectangle]
     rectanglesAround
         = let superLeft = super.origin.x
@@ -307,7 +307,7 @@ splitRectangleAround super sub
            rectFromCoords (subRight + 1) (subBottom + 1) superRight superBottom
          ]
 
-    -- | Create a rectangle from top left and bottom right coordinates. If the
+    -- Create a rectangle from top left and bottom right coordinates. If the
     -- rectangle is nullary or negative in size, return Nothing.
     rectFromCoords :: Coord -> Coord -> Coord -> Coord -> Maybe Rectangle
     rectFromCoords x1 y1 x2 y2
