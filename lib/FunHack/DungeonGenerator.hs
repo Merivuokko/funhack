@@ -168,7 +168,7 @@ makeRoom level rect = do
         writeLevelMap p cell level
     pure $! Room rect 0 []
   where
-    -- | Determine if a point is inside the region and not on its edge.
+    -- Determine if a point is inside the region and not on its edge.
     isInner :: Point3D -> Bool
     isInner (Point3D { x, y })
         = y > rect.origin.y
@@ -199,7 +199,7 @@ makeRooms level levelRect = do
                 ]
     loop rects >>= (pure $!) -- \result -> result `seq` result
   where
-    -- | Recursively create rooms in one of the provided rectangles.
+    -- Recursively create rooms in one of the provided rectangles.
     -- Descriptors for created rooms are returned
     loop :: [Rectangle] -> m [Room]
     loop [] = pure $! []
