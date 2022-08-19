@@ -12,6 +12,7 @@ import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as HMap
 import Data.Hashable (Hashable)
 import Data.PQueue.Prio.Min qualified as PQ
+import Debug.Trace
 
 -- | A* algorith uses lots of state variables. This type makes the algorithm
 -- more readable.
@@ -37,7 +38,7 @@ data AStarState a cost = AStarState {
 -- This is a general implementation which works by calling supplied functions
 -- for querying all relevant information about the graph used.
 aStarM
-    :: forall a cost m. (Hashable a, Monad m, Ord cost, Num cost)
+    :: forall a cost m. (Hashable a, Monad m, Ord cost, Num cost, Show cost, Show a)
     => (a -> m Bool) -- ^ Determine if the supplied node is the goal node.
     -> (a -> m cost) -- ^ A heuristic action that returns the approximate cost
                      -- of reaching the goal node from the node supplied. This
@@ -61,7 +62,7 @@ aStarM isGoal heuristic adjacents startNode = do
     -- The actual A* implementation
     aStarM' :: AStarState a cost -> m (Maybe (cost, [a]))
     aStarM' state
-        = case PQ.minView state.queue of
+        = traceShowM ("aStarM': " ++ (show state)) >> case PQ.minView state.queue of
               Nothing -> pure $! Nothing
               Just ((node, travelCost), rest) ->
                   let state' = state { queue = rest }
@@ -76,15 +77,16 @@ aStarM isGoal heuristic adjacents startNode = do
         searchAdjacents :: m (AStarState a cost)
         searchAdjacents
             = adjacentNodesCosts
-              >>= foldM enqueue state
+              >>= foldM (enqueue node) state
 
         -- A monadic action returning a list of adjacent nodes associated with their travel cost
         adjacentNodesCosts :: m [(a, cost)]
         adjacentNodesCosts
-            = adjacents node
+            = adjacents node >>= \a -> traceM ("Ajdacents: " ++ (show a)) >> pure a
             >>= pure . (fmap $ second (+ travelCost))
-            >>= pure . filter \(n, c) ->
-                                  c < HMap.findWithDefault c n state.travelCosts
+            >>= pure . filter (\(n, c) ->
+                                  ((<) <$> (Just c) <*> HMap.lookup n state.travelCosts) /= Just False)
+            >>= \f -> traceM ("Filtered adjacents: " ++ (show f)) >> pure f
 
         -- Resolve the shortest path once the goal has been found
         resolvePath :: m (cost, [a])
@@ -97,10 +99,11 @@ aStarM isGoal heuristic adjacents startNode = do
             = constructPath (HMap.lookup n state.predecessors) (n : prefix)
 
     -- Add a node to the queue
-    enqueue :: AStarState a cost -> (a, cost) -> m (AStarState a cost)
-    enqueue !state !(node, travel) = do
+    enqueue :: a -> AStarState a cost -> (a, cost) -> m (AStarState a cost)
+    enqueue parent !state !(node, travel) = do
         heur <- heuristic node
         pure $! state {
               queue = PQ.insert (travel + heur) (node, travel) state.queue,
-              travelCosts = HMap.insert node travel state.travelCosts
+              travelCosts = HMap.insert node travel state.travelCosts,
+              predecessors = HMap.insert node parent state.predecessors
           }
