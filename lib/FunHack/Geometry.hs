@@ -110,7 +110,7 @@ pointDistance a b
     = let dx = fromIntegral (a.x - b.x)
           dy = fromIntegral (a.y - b.y)
           dz = fromIntegral (a.z - b.z)
-      in sqrt $! (dx ^ 2) + (dy ^ 2) + (dz ^ 2)
+      in sqrt $! (dx ^ (2 :: Int)) + (dy ^ (2 :: Int)) + (dz ^ (2 :: Int))
          
 -- | Adjust a point's location relatively by steps.
 adjustPointBy
