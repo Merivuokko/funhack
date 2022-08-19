@@ -62,6 +62,7 @@ common general
             -Wno-implicit-prelude
             -Wno-missed-specialisations
             -Wno-missing-import-lists
+            -Wno-missing-kind-signatures
             -Wno-missing-safe-haskell-mode
             -Wno-monomorphism-restriction
             -Wno-safe
@@ -76,15 +77,15 @@ common funhack-dep
 library
     import: general
     build-depends:
+        hashable ^>=1.4.1,
         primitive ^>=0.7.4,
+        pqueue ^>=1.4.2,
+        unordered-containers ^>=0.2.19,
         vector ^>=0.13
-        -- containers ^>=0.6,
-        -- hashable ^>=0.4,
-        -- mtl ^>=2.3,
-        -- unordered-containers ^>=0.2.15
     exposed-modules:
         FunHack.DungeonGenerator,
-        FunHack.Geometry
+        FunHack.Geometry,
+        FunHack.PathFinding
     other-modules:
     hs-source-dirs: lib
 
