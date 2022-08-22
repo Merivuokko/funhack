@@ -82,7 +82,7 @@ aStarM isGoal heuristic adjacents startNode = do
         -- A monadic action returning a list of adjacent nodes associated with their travel cost
         adjacentNodesCosts :: m [(a, cost)]
         adjacentNodesCosts
-            = adjacents node >>= \a -> traceM ("Ajdacents: " ++ (show a)) >> pure a
+            = adjacents node >>= \a -> traceM ("Adjacents: " ++ (show a)) >> pure a
             >>= pure . (fmap $ second (+ travelCost))
             >>= pure . filter (\(n, c) ->
                                   ((<) <$> (Just c) <*> HMap.lookup n state.travelCosts) /= Just False)
