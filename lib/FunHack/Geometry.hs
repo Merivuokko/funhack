@@ -22,7 +22,7 @@ module FunHack.Geometry
         pointsAroundAligned,
         pointsAroundHorizontal,
         pointsAroundAlignedHorizontal,
-        
+
         -- ** Point adjustment
         movePointBy,
         movePointTowards,
@@ -40,7 +40,7 @@ module FunHack.Geometry
         -- ** Properties
         rectCuboidsIntersect,
         containsRectCuboid,
-        rectCuboidContainsPoint,
+        containsPoint,
 
         -- ** RectCuboid operations
         resizeRectCuboid,
@@ -126,7 +126,7 @@ pointsAround !p
       tail $! [ Point (p.x + x) (p.y + y) (p.z + z)
               | z <- [ 0, 1, -1 ],
                 (x, y) <- horizontalStepsOrdered ]
-      
+
 -- | Return a list of all points around the center point that are aligned along the axes. In other words diagonally reachable points are excluded. The result list always contains six poitns.
 --
 -- The order of returned points is North, East, South, West, Up, Down.
@@ -192,7 +192,7 @@ data RectCuboid = RectCuboid {
 
     -- | Height of the cuboid, northwards from the origin
     height :: {-# UNPACK #-} Distance,
-    
+
     -- | Depth of the cuboid, upwards from the origin
     depth :: {-# UNPACK #-} Distance
     }
@@ -315,8 +315,8 @@ containsRectCuboid !super !sub
       && bottom super <= bottom sub && top super >= top sub
 
 -- | Determine if a rectangular cuboid contains a specific point.
-rectCuboidContainsPoint :: Point -> RectCuboid -> Bool
-rectCuboidContainsPoint !p !r
+containsPoint :: RectCuboid -> Point -> Bool
+rectCuboidContainsPoint !r !p
     = west r <= p.x && east r >= p.x
       && south r <= p.y && north r >= p.y
       && bottom r <= p.z && top r >= p.z
