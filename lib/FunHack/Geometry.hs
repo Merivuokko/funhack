@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 -- | Data types and functions for dealing with world geometry
 
 module FunHack.Geometry
@@ -49,7 +50,9 @@ module FunHack.Geometry
         splitRectCuboidOut
     ) where
 
+import Data.Hashable
 import Data.Int (Int64)
+import GHC.Generics (Generic)
 import GHC.Stack
 
 -- | A numeric coordinate (may be positive or negative)
@@ -98,7 +101,8 @@ data Point = Point {
     -- | The Z coordinate
     z :: {-# UNPACK #-} Coord
     }
-    deriving stock (Eq, Show)
+    deriving stock (Eq, Generic, Show)
+    deriving anyclass Hashable
 
 -- | Calculate the distance between two points using the Pythagorean theorem.
 --
