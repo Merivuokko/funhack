@@ -41,6 +41,7 @@ module FunHack.Geometry
         rectCuboidsIntersect,
         containsRectCuboid,
         containsPoint,
+        pointsInRectCuboid,
 
         -- ** RectCuboid operations
         resizeRectCuboid,
@@ -316,10 +317,19 @@ containsRectCuboid !super !sub
 
 -- | Determine if a rectangular cuboid contains a specific point.
 containsPoint :: RectCuboid -> Point -> Bool
-rectCuboidContainsPoint !r !p
+containsPoint !r !p
     = west r <= p.x && east r >= p.x
       && south r <= p.y && north r >= p.y
       && bottom r <= p.z && top r >= p.z
+
+-- | Return a list of all points contained within a rectangular cuboid. The
+-- points are not in a parrticular order.
+pointsInRectCuboid :: RectCuboid -> [Point]
+pointsInRectCuboid !r
+    = [ Point x y z
+      | z <- [ bottom r .. top r ],
+        y <- [ south r .. north r],
+        x <- [ west r .. east r ] ]
 
 -- | Resize a rectangular cuboid by a given amount of steps per axis. The new
 -- cuboid will have the same center point as the original one. If the
