@@ -28,26 +28,26 @@ module FunHack.Geometry
         movePointBy,
         movePointTowards,
 
-        -- * Rectangular cuboids
-        RectCuboid (origin, width, height, depth),
+        -- * Boxes (a.k.a. rectangular cuboids)
+        Box (origin, width, height, depth),
 
-        -- ** Creating rectangular cuboids
-        makeRectCuboid,
-        makeRectCuboidFromCornerPoints,
+        -- ** Creating boxes
+        makeBox,
+        makeBoxFromCornerPoints,
 
-        -- ** RectCuboid's coordinates
+        -- ** Box's coordinates
         north, east, south, west, top, bottom, centerX, centerY, centerZ,
 
         -- ** Properties
-        rectCuboidsIntersect,
-        containsRectCuboid,
-        containsPoint,
-        pointsInRectCuboid,
+        boxesIntersect,
+        containsBox,
+        boxContainsPoint,
+        pointsInBox,
 
-        -- ** RectCuboid operations
-        resizeRectCuboid,
-        rectCuboidIntersection,
-        splitRectCuboidOut
+        -- ** Box operations
+        resizeBox,
+        boxIntersection,
+        splitBoxOut
     ) where
 
 import Data.Hashable
@@ -183,49 +183,47 @@ movePointTowards !point !dir !steps
     = let (x, y, z) = directionToSteps dir
       in movePointBy point (x * steps) (y * steps) (z * steps)
 
--- | A rectangular cuboid aligned along the axis. A rectangular cuboid has an
--- origin point (the bottom southwestern corner point), and width, height and
--- depth.
+-- | Box is a rectangular cuboid aligned along the axes. A box has an origin
+-- point (the bottom southwestern corner point), and width, height and depth.
 --
--- RectCuboids are created with the 'makeRectCuboid' function.
-data RectCuboid = RectCuboid {
-    -- | The origin point which is the bottom southwestern point of the cuboid.
+-- Boxes are created with the 'makeBox' function.
+data Box = Box {
+    -- | The origin point which is the bottom southwestern point of the box.
     origin :: {-# UNPACK #-} Point,
 
-    -- | Width of the cuboid, eastwards form the origin
+    -- | Width of the box, eastwards form the origin
     width :: {-# UNPACK #-} Distance,
 
-    -- | Height of the cuboid, northwards from the origin
+    -- | Height of the box, northwards from the origin
     height :: {-# UNPACK #-} Distance,
 
-    -- | Depth of the cuboid, upwards from the origin
+    -- | Depth of the box, upwards from the origin
     depth :: {-# UNPACK #-} Distance
     }
     deriving stock (Eq, Show)
 
--- | Make a rectangular cuboid from a point and dimensions. If dimensions are
--- negative, the point and dimensions are adjusted such that the dimensions
--- will be positive.
+-- | Make a box from a point and dimensions. If dimensions are negative, the
+-- point and dimensions are adjusted such that the dimensions will be
+-- positive.
 --
--- If the volume of the resulting cuboid would be zero (i.e. one of width,
--- height or depth is zero), 'error' will be called with a very unhelpful
--- message.
-makeRectCuboid
+-- If the volume of the resulting box would be zero (i.e. one of width, height
+-- or depth is zero), 'error' will be called with a very unhelpful message.
+makeBox
     :: HasCallStack
-    => Point -- ^ Origin of the cuboid
-    -> Distance -- ^ Width of the cuboid
-    -> Distance -- ^ Height of the cuboid
-    -> Distance -- ^ Depth of the cuboid
-    -> RectCuboid
-makeRectCuboid !orig !width !height !depth
+    => Point -- ^ Origin of the box
+    -> Distance -- ^ Width of the box
+    -> Distance -- ^ Height of the box
+    -> Distance -- ^ Depth of the box
+    -> Box
+makeBox !orig !width !height !depth
     | width == 0 || height == 0 || depth == 0
-    = error "Attempt to create a null rectangular cuboid."
+    = error "Attempt to create a null box."
 
     | otherwise
     = let (x, width') = normalize orig.x width
           (y, height') = normalize orig.y height
           (z, depth') = normalize orig.y depth
-      in RectCuboid {
+      in Box {
              origin = Point x y z,
              width = width',
              height = height',
@@ -239,16 +237,16 @@ makeRectCuboid !orig !width !height !depth
           | dist < 0 = (coord + dist, abs dist)
           | otherwise = (coord, dist)
 
--- | Make a new rectangular cuboid from given two points. The points need to
--- represent opposite corners of the cuboid, but it does not matter which
--- corners they are. Their order is also free.
+-- | Make a new box from given two points. The points need to represent
+-- opposite corners of the box, but it does not matter which corners they are.
+-- Their order is also free.
 --
--- If the points are equal, a rectangular cuboid of size 1 is returned.
-makeRectCuboidFromCornerPoints
-    :: Point -- ^ One corner of a rectangular cuboid
-    -> Point -- ^ The opposite corner of the rectangular cuboid
-    -> RectCuboid
-makeRectCuboidFromCornerPoints !a !b
+-- If the points are equal, a box of size 1 is returned.
+makeBoxFromCornerPoints
+    :: Point -- ^ One corner of a box
+    -> Point -- ^ The opposite corner of the box
+    -> Box
+makeBoxFromCornerPoints !a !b
     = let x1 = min a.x b.x
           y1 = min a.y b.y
           z1 = min a.z b.z
@@ -258,111 +256,111 @@ makeRectCuboidFromCornerPoints !a !b
           width = x2 - x1 + 1
           height = y2 - y1 + 1
           depth = z2 - z1 + 1
-      in RectCuboid {
+      in Box {
              origin = Point x1 y1 z1,
              width = width,
              height = height,
              depth = depth
          }
 
--- | Return the northernmost Y coordinate of a rectangular cuboid.
-north :: RectCuboid -> Coord
+-- | Return the northernmost Y coordinate of a box.
+north :: Box -> Coord
 north !r = r.origin.y + r.height - 1
 
--- | Return the easternmost X coordinate of a rectangular cuboid.
-east :: RectCuboid -> Coord
+-- | Return the easternmost X coordinate of a box.
+east :: Box -> Coord
 east !r = r.origin.x + r.width - 1
 
--- | Return the southernmost Y coordinate of a rectangular cuboid.
-south :: RectCuboid -> Coord
+-- | Return the southernmost Y coordinate of a box.
+south :: Box -> Coord
 south !r = r.origin.y
 
--- | Return the westernmost X coordinate of a rectangular cuboid.
-west :: RectCuboid -> Coord
+-- | Return the westernmost X coordinate of a box.
+west :: Box -> Coord
 west !r = r.origin.x
 
--- | Return the topmost Z coordinate of a rectangular cuboid.
-top :: RectCuboid -> Coord
+-- | Return the topmost Z coordinate of a box.
+top :: Box -> Coord
 top !r = r.origin.z + r.depth - 1
 
--- | Return the undermost Z coordinate of a rectangular cuboid.
-bottom :: RectCuboid -> Coord
+-- | Return the undermost Z coordinate of a box.
+bottom :: Box -> Coord
 bottom !r = r.origin.z
 
--- | Return the center X coordinate of a rectangular cuboid.
-centerX :: RectCuboid -> Coord
+-- | Return the center X coordinate of a box.
+centerX :: Box -> Coord
 centerX !r = r.origin.x + (r.width `div` 2)
 
--- | Return the center Y coordinate of a rectangular cuboid.
-centerY :: RectCuboid -> Coord
+-- | Return the center Y coordinate of a box.
+centerY :: Box -> Coord
 centerY !r = r.origin.y + (r.height `div` 2)
 
--- | Return the center Z coordinate of a rectangular cuboid.
-centerZ :: RectCuboid -> Coord
+-- | Return the center Z coordinate of a box.
+centerZ :: Box -> Coord
 centerZ !r = r.origin.z + (r.depth `div` 2)
 
--- | Determine if two rectangular cuboids intersect.
-rectCuboidsIntersect :: RectCuboid -> RectCuboid -> Bool
-rectCuboidsIntersect !a !b
+-- | Determine if two boxes intersect.
+boxesIntersect :: Box -> Box -> Bool
+boxesIntersect !a !b
     = west a <= east b && east a >= west b
       && south a <= north b && north a >= south b
       && bottom a <= top b && top a >= bottom b
 
--- | Determine if the first rectangular cuboid completely contains the second
+-- | Determine if the first box completely contains the second
 -- one.
-containsRectCuboid
-    :: RectCuboid -- ^ The possible super cuboid
-    -> RectCuboid -- ^ The possible subcuboid
+containsBox
+    :: Box -- ^ The possible super box
+    -> Box -- ^ The possible subbox
     -> Bool
-containsRectCuboid !super !sub
+containsBox !super !sub
     = west super <= west sub && east super >= east sub
       && south super <= south sub && north super >= north sub
       && bottom super <= bottom sub && top super >= top sub
 
--- | Determine if a rectangular cuboid contains a specific point.
-containsPoint :: RectCuboid -> Point -> Bool
-containsPoint !r !p
+-- | Determine if a box contains a specific point.
+boxContainsPoint :: Box -> Point -> Bool
+boxContainsPoint !r !p
     = west r <= p.x && east r >= p.x
       && south r <= p.y && north r >= p.y
       && bottom r <= p.z && top r >= p.z
 
--- | Return a list of all points contained within a rectangular cuboid. The
+-- | Return a list of all points contained within a box. The
 -- points are not in a parrticular order.
-pointsInRectCuboid :: RectCuboid -> [Point]
-pointsInRectCuboid !r
+pointsInBox :: Box -> [Point]
+pointsInBox !r
     = [ Point x y z
       | z <- [ bottom r .. top r ],
         y <- [ south r .. north r],
         x <- [ west r .. east r ] ]
 
--- | Resize a rectangular cuboid by a given amount of steps per axis. The new
--- cuboid will have the same center point as the original one. If the
--- resulting cuboid would have volume of zero or less, Nothing is returned.
+-- | Resize a box by a given amount of steps per axis. The new
+-- box will have the same center point as the original one. If the
+-- resulting box would have volume of zero or less, Nothing is returned.
 --
 -- The resizing amounts are given as relative deltas from the original size.
-resizeRectCuboid
+resizeBox
     :: Distance -- ^ Amount to resize on X axis
     -> Distance -- ^ Amount to resize on Y axis
     -> Distance -- ^ Amount to resize on Z axis
-    -> RectCuboid -- ^ The rectangular cuboid to resize
-    -> Maybe RectCuboid -- ^ The possible new cuboid
-resizeRectCuboid !dx !dy !dz !r
+    -> Box -- ^ The box to resize
+    -> Maybe Box -- ^ The possible new box
+resizeBox !dx !dy !dz !r
     = let (x, width) = resizeEdge r.origin.x r.width dx
           (y, height) = resizeEdge r.origin.y r.height dy
           (z, depth) = resizeEdge r.origin.z r.depth dz
     in if width <= 0 || height <= 0 || depth <= 0
        then Nothing
-       else Just $! RectCuboid {
+       else Just $! Box {
                 origin = (Point x y z),
                 width = width,
                 height = height,
                 depth = depth
             }
   where
-    -- Resize a cuboid's edge along one axis.
+    -- Resize a box's edge along one axis.
     --
     -- Given a center coordinate, a length of the corresponding edge in the
-    -- original cuboid and the difference of the new desired edge length
+    -- original box and the difference of the new desired edge length
     -- respective to the original, return the new origin coordinate and the
     -- new edge length.
     resizeEdge :: Coord -> Distance -> Distance -> (Coord, Distance)
@@ -371,9 +369,9 @@ resizeRectCuboid !dx !dy !dz !r
               adj = (len `div` 2) - (len' `div` 2)
         in (start + adj, len')
 
--- | Return an intersection of two rectangular cuboids. If the cuboids do not overlap, Nothing is returned.
-rectCuboidIntersection :: RectCuboid -> RectCuboid -> Maybe RectCuboid
-rectCuboidIntersection !a !b
+-- | Return an intersection of two boxes. If the boxes do not overlap, Nothing is returned.
+boxIntersection :: Box -> Box -> Maybe Box
+boxIntersection !a !b
     = let x1 = max (west a) (west b)
           y1 = max (south a) (south b)
           z1 = max (bottom a) (bottom b)
@@ -385,47 +383,47 @@ rectCuboidIntersection !a !b
           depth = z2 - z1 + 1
       in if width < 0 || height < 0 || depth < 0
       then Nothing
-      else Just $! RectCuboid {
+      else Just $! Box {
                origin = Point x1 y1 z1,
                width = width,
                height = height,
                depth = depth
            }
 
--- | Split a rectangular cuboid into subcuboids that surround a given
--- subcuboid contained completely within the super cuboid.
+-- | Split a box into subboxes that surround a given
+-- subbox contained completely within the super box.
 --
--- If the subcuboid is in the middle of the super cuboid and does not
--- touch any of the super's edges, this creates 26 new subcuboids.
+-- If the subbox is in the middle of the super box and does not
+-- touch any of the super's edges, this creates 26 new subboxes.
 --
--- The number of generated new rectangular cuboids will be smaller if the
--- subcuboid touches some of the super's edges.
+-- The number of generated new boxes will be smaller if the
+-- subbox touches some of the super's edges.
 --
--- The given subcuboid must not extend outisde the super's edges. If it does,
+-- The given subbox must not extend outisde the super's edges. If it does,
 -- Nothing is returned.
 --
 -- The result list is generated lazily.
-splitRectCuboidOut
-    :: RectCuboid -- ^ The super cuboid that is to be splitted into parts
-    -> RectCuboid -- ^ The subcuboid that is to be "extracted out" of the super
-    -> Maybe [RectCuboid]
-splitRectCuboidOut !super !sub
-    | containsRectCuboid super sub = Nothing
-    | otherwise = Just $! cuboidsAround
+splitBoxOut
+    :: Box -- ^ The super box that is to be splitted into parts
+    -> Box -- ^ The subbox that is to be "extracted out" of the super
+    -> Maybe [Box]
+splitBoxOut !super !sub
+    | containsBox super sub = Nothing
+    | otherwise = Just $! boxesAround
   where
-    -- List of all rectangular cuboids around the subcuboid
-    cuboidsAround :: [RectCuboid]
-    cuboidsAround
-        = [ RectCuboid (Point x y z) w h d
+    -- List of all boxes around the subbox
+    boxesAround :: [Box]
+    boxesAround
+        = [ Box (Point x y z) w h d
           | (x, w) <- find west east,
             (y, h) <- find south north,
             (z, d) <- find bottom top,
             not (x == sub.origin.x && y == sub.origin.y && z == sub.origin.z)
           ]
 
-    -- Find all positions and lengths of a possible subcuboid on one axis
+    -- Find all positions and lengths of a possible subbox on one axis
     -- using the given functions
-    find :: (RectCuboid -> Coord) -> (RectCuboid -> Coord) -> [(Coord, Distance)]
+    find :: (Box -> Coord) -> (Box -> Coord) -> [(Coord, Distance)]
     find minim maxim
         = let xs = [ (minim super, (minim sub) - 1),
                      (minim sub, maxim sub),

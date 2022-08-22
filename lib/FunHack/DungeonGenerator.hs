@@ -52,7 +52,7 @@ data LevelMap s = LevelMap {
     cells :: MV.MVector s (MV.MVector s LevelCell),
 
     -- | The bounding box of the level
-    bounds :: RectCuboid
+    bounds :: Box
     }
 
 -- | Make a new empty level map with the provided dimensions.
@@ -65,7 +65,7 @@ makeLevelMap width height = do
     cells <- MV.replicateM (fromIntegral height) (MV.replicate (fromIntegral width) Undefined)
     pure $! LevelMap {
         cells = cells,
-        bounds = makeRectCuboid (Point 0 0 0) width height 1
+        bounds = makeBox (Point 0 0 0) width height 1
     }
 
 -- | Turn a LevelMap into a Text value for showing. This is mostly useful for debugging.
@@ -155,7 +155,7 @@ makeNetHackLevel width height = do
 -- map and to connect it to other rooms on the level.
 data Room = Room {
     -- | Occupied area
-    bounds :: RectCuboid,
+    bounds :: Box,
 
     -- | Whether the room has been connected to other rooms
     connections :: Int,
@@ -169,10 +169,10 @@ data Room = Room {
 makeRoom
     :: (PrimMonad m)
     => LevelMap (PrimState m) -- ^ Map to put the room on
-    -> RectCuboid -- ^ The box that the room should occupy
+    -> Box -- ^ The box that the room should occupy
     -> m Room
 makeRoom !level !box = do
-    forM_ (pointsInRectCuboid box) \p -> do
+    forM_ (pointsInBox box) \p -> do
         let cell = bool RoomWall RoomFloor $! (isInner p)
         writeLevelMap p cell level
     pure $! Room box 0 []
@@ -198,16 +198,16 @@ makeRooms
     -> m [Room]
 makeRooms !level = do
     let z = level.bounds.origin.z
-    let rects = [ makeRectCuboid (Point 1 1 z) 5 5 1,
-                  makeRectCuboid (Point 10 3 z) 10 6 1,
-                  makeRectCuboid (Point 20 12 z) 4 4 1,
-                  makeRectCuboid (Point 12 14 z) 7 5 1
+    let rects = [ makeBox (Point 1 1 z) 5 5 1,
+                  makeBox (Point 10 3 z) 10 6 1,
+                  makeBox (Point 20 12 z) 4 4 1,
+                  makeBox (Point 12 14 z) 7 5 1
                 ]
     loop rects
   where
     -- Recursively create rooms in one of the provided rectangles.
     -- Descriptors for created rooms are returned
-    loop :: [RectCuboid] -> m [Room]
+    loop :: [Box] -> m [Room]
     loop [] = pure $! []
     loop (r : rects) = do
         !room <- makeRoom level r
@@ -258,6 +258,6 @@ drawCorridor start goal level = do
     -- Determine if a point is suitable for placing a corridor onto
     isCorridorPoint :: Point -> m Bool
     isCorridorPoint !point
-        = if containsPoint level.bounds point
+        = if boxContainsPoint level.bounds point
           then readLevelMap point level >>= pure . flip elem [Undefined, Corridor]
           else pure False
