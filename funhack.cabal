@@ -34,10 +34,13 @@ flag Weverything
 common general
     build-depends:
         base ^>= { 4.16, 4.17 },
+        effectful-core ^>=2.1,
         text ^>=2.0
 
     default-extensions:
         BlockArguments,
+        DataKinds,
+        DeriveAnyClass,
         DerivingStrategies,
         DuplicateRecordFields,
         LambdaCase,
@@ -45,7 +48,8 @@ common general
         NoStarIsType,
         OverloadedRecordDot,
         OverloadedStrings,
-        StrictData
+        StrictData,
+        TypeFamilies
 
     default-language: GHC2021
     ghc-options:
@@ -67,6 +71,7 @@ common general
             -Wno-monomorphism-restriction
             -Wno-safe
             -Wno-unsafe
+            -Wno-unticked-promoted-constructors
     else
         ghc-options: -Wall -Wcompat
 
@@ -80,12 +85,14 @@ library
         hashable ^>=1.4.1,
         primitive ^>=0.7.4,
         pqueue ^>=1.4.2,
+        random ^>= 1.2.1.1,
         unordered-containers ^>=0.2.19,
         vector ^>=0.13
     exposed-modules:
         FunHack.DungeonGenerator,
         FunHack.Geometry,
-        FunHack.PathFinding
+        FunHack.PathFinding,
+        FunHack.Random
     other-modules:
     hs-source-dirs: lib
 
