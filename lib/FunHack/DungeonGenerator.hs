@@ -25,10 +25,12 @@ module FunHack.DungeonGenerator
     ) where
 
 import Control.Monad (filterM, forM_, (<=<))
-import Control.Monad.Primitive (PrimMonad, PrimState)
+import Control.Monad.Primitive (RealWorld)
 import Data.Bool (bool)
 import Data.Text qualified as T
 import Data.Vector.Mutable qualified as MV
+import Effectful
+import Effectful.Prim
 
 import FunHack.Geometry
 import FunHack.PathFinding
@@ -47,9 +49,9 @@ data LevelCell
     deriving stock (Eq, Show)
 
 -- | LevelMap is a 2-dimensional vector of LevelCell coupled with additional datas
-data LevelMap s = LevelMap {
+data LevelMap = LevelMap {
     -- | Cells of the level
-    cells :: MV.MVector s (MV.MVector s LevelCell),
+    cells :: MV.MVector RealWorld (MV.MVector RealWorld LevelCell),
 
     -- | The bounding box of the level
     bounds :: Box
@@ -57,10 +59,10 @@ data LevelMap s = LevelMap {
 
 -- | Make a new empty level map with the provided dimensions.
 makeLevelMap
-    :: (PrimMonad m)
+    :: Prim :> es
     => Distance -- ^ Width of the level map
     -> Distance -- ^ Height of the level map
-    -> m (LevelMap (PrimState m))
+    -> Eff es LevelMap
 makeLevelMap width height = do
     cells <- MV.replicateM (fromIntegral height) (MV.replicate (fromIntegral width) Undefined)
     pure $! LevelMap {
@@ -70,12 +72,12 @@ makeLevelMap width height = do
 
 -- | Turn a LevelMap into a Text value for showing. This is mostly useful for debugging.
 showLevelMap
-    :: (PrimMonad m)
-    => LevelMap (PrimState m)
-    -> m T.Text
+    :: forall es. Prim :> es
+    => LevelMap
+    -> Eff es T.Text
 showLevelMap = MV.foldM' foldLine T.empty . (.cells)
   where
-    foldLine :: (PrimMonad m) => T.Text -> MV.MVector (PrimState m) LevelCell -> m T.Text
+    foldLine :: T.Text -> MV.MVector RealWorld LevelCell -> Eff es T.Text
     foldLine prefix line = do
         textLine <- MV.foldl' cellsToText T.empty line
         pure $! prefix <> textLine <> "\n"
@@ -95,10 +97,10 @@ showLevelMap = MV.foldM' foldLine T.empty . (.cells)
 --
 -- This function fails with an exception if the location is invalid.
 readLevelMap
-    :: (PrimMonad m)
+    :: Prim :> es
     => Point -- ^ The cell location
-    -> LevelMap (PrimState m) -- ^ The map to read from
-    -> m LevelCell
+    -> LevelMap -- ^ The map to read from
+    -> Eff es LevelCell
 readLevelMap point level
     = let x = fromIntegral point.x
           y = fromIntegral point.y
@@ -108,11 +110,11 @@ readLevelMap point level
 --
 -- This function fails with an exception, if hte location is invalid.
 writeLevelMap
-    :: (PrimMonad m)
+    :: Prim :> es
     => Point -- ^ The cell location
     -> LevelCell -- ^ The new cell value
-    -> LevelMap (PrimState m) -- ^ The map to read from
-    -> m ()
+    -> LevelMap -- ^ The map to read from
+    -> Eff es ()
 writeLevelMap point value level
     = let x = fromIntegral point.x
           y = fromIntegral point.y
@@ -122,11 +124,11 @@ writeLevelMap point value level
 --
 -- This function fails with an exception, if hte location is invalid.
 modifyLevelMap
-    :: (PrimMonad m)
+    :: Prim :> es
     => Point -- ^ The cell location
     -> (LevelCell -> LevelCell) -- ^ A function called with the old value and which produces a new cell value
-    -> LevelMap (PrimState m) -- ^ The map to read from
-    -> m ()
+    -> LevelMap -- ^ The map to read from
+    -> Eff es ()
 modifyLevelMap point f level
     = let x = fromIntegral point.x
           y = fromIntegral point.y
@@ -137,10 +139,10 @@ modifyLevelMap point f level
 
 -- | Make a NetHack-style level map with the given dimensions.
 makeNetHackLevel
-    :: (PrimMonad m)
+    :: Prim :> es
     => Distance -- ^ Width of the level map
     -> Distance -- ^ Height of the level map
-    -> m (LevelMap (PrimState m))
+    -> Eff es LevelMap
 makeNetHackLevel width height = do
     -- Create level map
     level <- makeLevelMap width height
@@ -167,10 +169,10 @@ data Room = Room {
 -- | Make a room and place it on a level map. This modifies the map in place
 -- and returns a room description.
 makeRoom
-    :: (PrimMonad m)
-    => LevelMap (PrimState m) -- ^ Map to put the room on
+    :: Prim :> es
+    => LevelMap -- ^ Map to put the room on
     -> Box -- ^ The box that the room should occupy
-    -> m Room
+    -> Eff es Room
 makeRoom !level !box = do
     forM_ (pointsInBox box) \p -> do
         let cell = bool RoomWall RoomFloor $! (isInner p)
@@ -193,9 +195,9 @@ makeRoom !level !box = do
 -- created. If the rectangle is bigger than the allocated map, bad things will
 -- happen.
 makeRooms
-    :: forall m. (PrimMonad m)
-    => LevelMap (PrimState m) -- ^ Map of the level (this is odified in place)
-    -> m [Room]
+    :: forall es. Prim :> es
+    => LevelMap -- ^ Map of the level (this is odified in place)
+    -> Eff es [Room]
 makeRooms !level = do
     let z = level.bounds.origin.z
     let rects = [ makeBox (Point 1 1 z) 5 5 1,
@@ -207,7 +209,7 @@ makeRooms !level = do
   where
     -- Recursively create rooms in one of the provided rectangles.
     -- Descriptors for created rooms are returned
-    loop :: [Box] -> m [Room]
+    loop :: [Box] -> Eff es [Room]
     loop [] = pure $! []
     loop (r : rects) = do
         !room <- makeRoom level r
@@ -225,11 +227,11 @@ makeRooms !level = do
 -- Return a list of Point values showing the chosen path, or Nothing, if no
 -- path was found.
 drawCorridor
-    :: forall m. (PrimMonad m)
+    :: forall es. Prim :> es
     => Point -- ^ Starting point of the corridor
     -> Point -- ^ Target point of the corridor
-    -> LevelMap (PrimState m) -- ^ The map
-    -> m (Maybe [Point])
+    -> LevelMap -- ^ The map
+    -> Eff es (Maybe [Point])
 drawCorridor start goal level = do
     findPathForCorridor >>= \case
         Just path -> do
@@ -237,26 +239,26 @@ drawCorridor start goal level = do
             pure $! Just $! path
         Nothing -> pure $! Nothing
   where
-    findPathForCorridor :: m (Maybe [Point])
+    findPathForCorridor :: Eff es (Maybe [Point])
     findPathForCorridor
         = aStarM isGoal heuristic neighbours start
           >>= (pure . fmap snd)
 
-    heuristic :: Point -> m Distance
+    heuristic :: Point -> Eff es Distance
     heuristic p = pure $! (abs $! p.x - goal.x)
                   + (abs $! p.y - goal.y)
                   + (abs $! p.z - goal.z)
 
-    isGoal :: Point -> m Bool
+    isGoal :: Point -> Eff es Bool
     isGoal p = pure $! p == goal
 
-    neighbours :: Point -> m [(Point, Distance)]
+    neighbours :: Point -> Eff es [(Point, Distance)]
     neighbours
         = mapM (pure . (, 1))
           <=< filterM isCorridorPoint . pointsAroundAlignedHorizontal
 
     -- Determine if a point is suitable for placing a corridor onto
-    isCorridorPoint :: Point -> m Bool
+    isCorridorPoint :: Point -> Eff es Bool
     isCorridorPoint !point
         = if boxContainsPoint level.bounds point
           then readLevelMap point level >>= pure . flip elem [Undefined, Corridor]
