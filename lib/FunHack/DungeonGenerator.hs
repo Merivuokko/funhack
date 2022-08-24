@@ -35,6 +35,9 @@ import Effectful.Prim
 import FunHack.Geometry
 import FunHack.PathFinding
 
+-- | Atype alias for mutable vector in IO
+type MVector = MV.MVector RealWorld
+
 -- | LevelCell defines all cell types used by the level generator to fill
 -- dungeon levels. These are not the same as World cells, because level
 -- generator does not need to worry about many details whereas some of the
@@ -51,7 +54,7 @@ data LevelCell
 -- | LevelMap is a 2-dimensional vector of LevelCell coupled with additional datas
 data LevelMap = LevelMap {
     -- | Cells of the level
-    cells :: MV.MVector RealWorld (MV.MVector RealWorld LevelCell),
+    cells :: MVector (MVector LevelCell),
 
     -- | The bounding box of the level
     bounds :: Box
@@ -77,7 +80,7 @@ showLevelMap
     -> Eff es T.Text
 showLevelMap = MV.foldM' foldLine T.empty . (.cells)
   where
-    foldLine :: T.Text -> MV.MVector RealWorld LevelCell -> Eff es T.Text
+    foldLine :: T.Text -> MVector LevelCell -> Eff es T.Text
     foldLine prefix line = do
         textLine <- MV.foldl' cellsToText T.empty line
         pure $! prefix <> textLine <> "\n"
