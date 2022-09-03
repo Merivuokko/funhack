@@ -10,11 +10,6 @@ module FunHack.DungeonGenerator
         makeLevelMap,
         showLevelMap,
 
-        -- ** Read and update level maps
-        readLevelMap,
-        writeLevelMap,
-        modifyLevelMap,
-
         -- * Dungeon generation
         makeNetHackLevel,
 
@@ -25,18 +20,14 @@ module FunHack.DungeonGenerator
     ) where
 
 import Control.Monad (filterM, forM_, (<=<))
-import Control.Monad.Primitive (RealWorld)
 import Data.Bool (bool)
 import Data.Text qualified as T
-import Data.Vector.Mutable qualified as MV
 import Effectful
 import Effectful.Prim
 
 import FunHack.Geometry
 import FunHack.PathFinding
-
--- | Atype alias for mutable vector in IO
-type MVector = MV.MVector RealWorld
+import FunHack.WorldMap
 
 -- | LevelCell defines all cell types used by the level generator to fill
 -- dungeon levels. These are not the same as World cells, because level
@@ -52,42 +43,22 @@ data LevelCell
     deriving stock (Eq, Show)
 
 -- | LevelMap is a 2-dimensional vector of LevelCell coupled with additional datas
-data LevelMap = LevelMap {
-    -- | Cells of the level
-    cells :: MVector (MVector LevelCell),
-
-    -- | The bounding box of the level
-    bounds :: Box
-    }
+type LevelMap = WorldMap LevelCell
 
 -- | Make a new empty level map with the provided dimensions.
 makeLevelMap
     :: Prim :> es
-    => Distance -- ^ Width of the level map
-    -> Distance -- ^ Height of the level map
+    => Box -- ^ Bounds of the level map
     -> Eff es LevelMap
-makeLevelMap width height = do
-    cells <- MV.replicateM (fromIntegral height) (MV.replicate (fromIntegral width) Undefined)
-    pure $! LevelMap {
-        cells = cells,
-        bounds = makeBox (Point 0 0 0) width height 1
-    }
+makeLevelMap bounds = makeWorldMap bounds Undefined
 
 -- | Turn a LevelMap into a Text value for showing. This is mostly useful for debugging.
 showLevelMap
-    :: forall es. Prim :> es
+    :: Prim :> es
     => LevelMap
     -> Eff es T.Text
-showLevelMap = MV.foldM' foldLine T.empty . (.cells)
+showLevelMap = renderMap cellChar
   where
-    foldLine :: T.Text -> MVector LevelCell -> Eff es T.Text
-    foldLine prefix line = do
-        textLine <- MV.foldl' cellsToText T.empty line
-        pure $! prefix <> textLine <> "\n"
-
-    cellsToText :: T.Text -> LevelCell -> T.Text
-    cellsToText prefix cell = prefix <> (T.singleton $! cellChar $! cell)
-
     cellChar :: LevelCell -> Char
     cellChar cell = case cell of
         Undefined -> ' '
@@ -96,59 +67,14 @@ showLevelMap = MV.foldM' foldLine T.empty . (.cells)
         Doorway -> '+'
         Corridor -> ','
 
--- | Read a cell at a given point from a level map.
---
--- This function fails with an exception if the location is invalid.
-readLevelMap
-    :: Prim :> es
-    => Point -- ^ The cell location
-    -> LevelMap -- ^ The map to read from
-    -> Eff es LevelCell
-readLevelMap point level
-    = let x = fromIntegral point.x
-          y = fromIntegral point.y
-      in MV.read level.cells y >>= flip MV.read x
-
--- | Write a new value to a level map at a given point.
---
--- This function fails with an exception, if hte location is invalid.
-writeLevelMap
-    :: Prim :> es
-    => Point -- ^ The cell location
-    -> LevelCell -- ^ The new cell value
-    -> LevelMap -- ^ The map to read from
-    -> Eff es ()
-writeLevelMap point value level
-    = let x = fromIntegral point.x
-          y = fromIntegral point.y
-      in MV.read level.cells y >>= \vec -> MV.write vec x value
-
--- | Modify a cell in a level map at a given point.
---
--- This function fails with an exception, if hte location is invalid.
-modifyLevelMap
-    :: Prim :> es
-    => Point -- ^ The cell location
-    -> (LevelCell -> LevelCell) -- ^ A function called with the old value and which produces a new cell value
-    -> LevelMap -- ^ The map to read from
-    -> Eff es ()
-modifyLevelMap point f level
-    = let x = fromIntegral point.x
-          y = fromIntegral point.y
-      in do
-    vec <- MV.read level.cells y
-    val <- MV.read vec x
-    MV.write vec x $! f val
-
 -- | Make a NetHack-style level map with the given dimensions.
 makeNetHackLevel
     :: Prim :> es
-    => Distance -- ^ Width of the level map
-    -> Distance -- ^ Height of the level map
+    => Box -- ^ Bounds of the level
     -> Eff es LevelMap
-makeNetHackLevel width height = do
+makeNetHackLevel bounds = do
     -- Create level map
-    level <- makeLevelMap width height
+    level <- makeLevelMap bounds
 
     -- Create rooms
     _rooms <- makeRooms level
@@ -179,7 +105,7 @@ makeRoom
 makeRoom !level !box = do
     forM_ (pointsInBox box) \p -> do
         let cell = bool RoomWall RoomFloor $! (isInner p)
-        writeLevelMap p cell level
+        setMap p cell level
     pure $! Room box 0 []
   where
     -- Determine if a point is inside the region and not on its edge.
@@ -238,7 +164,7 @@ drawCorridor
 drawCorridor start goal level = do
     findPathForCorridor >>= \case
         Just path -> do
-            forM_ path \p -> writeLevelMap p Corridor level
+            forM_ path \p -> setMap p Corridor level
             pure $! Just $! path
         Nothing -> pure $! Nothing
   where
@@ -264,5 +190,5 @@ drawCorridor start goal level = do
     isCorridorPoint :: Point -> Eff es Bool
     isCorridorPoint !point
         = if boxContainsPoint level.bounds point
-          then readLevelMap point level >>= pure . flip elem [Undefined, Corridor]
+          then refMap point level >>= pure . flip elem [Undefined, Corridor]
           else pure False
