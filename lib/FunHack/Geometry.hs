@@ -38,6 +38,9 @@ module FunHack.Geometry
         -- ** Box's coordinates
         north, east, south, west, top, bottom, centerX, centerY, centerZ,
 
+        -- ** Box size
+        boxVolume,
+
         -- ** Properties
         boxesIntersect,
         containsBox,
@@ -222,7 +225,7 @@ makeBox !orig !width !height !depth
     | otherwise
     = let (x, width') = normalize orig.x width
           (y, height') = normalize orig.y height
-          (z, depth') = normalize orig.y depth
+          (z, depth') = normalize orig.z depth
       in Box {
              origin = Point x y z,
              width = width',
@@ -298,6 +301,10 @@ centerY !r = r.origin.y + (r.height `div` 2)
 -- | Return the center Z coordinate of a box.
 centerZ :: Box -> Coord
 centerZ !r = r.origin.z + (r.depth `div` 2)
+
+-- | Return the volume of a Box.
+boxVolume :: Box -> Distance
+boxVolume box = box.width * box.height * box.depth
 
 -- | Determine if two boxes intersect.
 boxesIntersect :: Box -> Box -> Bool
