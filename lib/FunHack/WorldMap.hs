@@ -9,13 +9,16 @@ module FunHack.WorldMap
         refMap,
         setMap,
         modifyMap,
-        modifyMapM
+        modifyMapM,
+        renderMap
     ) where
 
-import Control.Monad ((>=>))
+import Control.Monad (foldM)
+import Data.Text qualified as T
 import Data.Vector.Mutable qualified as MV
 import Effectful
 import Effectful.Prim
+import GHC.Stack (HasCallStack)
 
 import FunHack.Geometry
 
@@ -23,49 +26,77 @@ import FunHack.Geometry
 type Vector = MV.IOVector
 
 -- | A world map is a mapping from points to world cells.
-newtype WorldMap c = WorldMap (Vector (Vector (Vector c)))
+data WorldMap c = WorldMap {
+    bounds :: Box,
+    cells :: Vector c
+    }
 
 -- | Make a new world map with bounds defined by a Box.
 makeWorldMap :: Prim :> es => Box -> c -> Eff es (WorldMap c)
-makeWorldMap box initial
-    = WorldMap
-      <$> (MV.replicateM (fromIntegral box.depth)
-           $! MV.replicateM (fromIntegral box.height)
-           $! MV.replicate (fromIntegral box.width) initial)
+makeWorldMap bounds initial = do
+    cells <- MV.replicate (fromIntegral $! boxVolume bounds) initial
+    pure $! WorldMap { bounds = bounds, cells = cells }
 
--- | A general utility function to execute an action, if another action
--- succeeds.
-andThen :: Monad m => m (Maybe a) -> (a -> m (Maybe b)) -> m (Maybe b)
-andThen v action = v >>= maybe (pure $! Nothing) action
-
--- | A utility function for referring to vector indices using Coords.
-refVector :: Prim :> es => Coord -> Vector a -> Eff es (Maybe a)
-refVector ix = flip MV.readMaybe $! fromIntegral $! ix
-
--- | A utility function for setting a vector element indexed by Coord.
-setVector :: Prim :> es => Coord -> a -> Vector a -> Eff es (Maybe ())
-setVector ix e v = do
-    let ix' = fromIntegral $! ix
-    if ix' < 0 || ix' > MV.length v
-        then pure $! Nothing
-        else fmap Just $! MV.unsafeWrite v ix' e
+-- | Translate point to a worldmap cell index.
+pointToIndex :: HasCallStack => Point -> WorldMap c -> Int
+pointToIndex p wm
+    = let !x = p.x - wm.bounds.origin.x
+          !y = p.y - wm.bounds.origin.y
+          !z = p.z - wm.bounds.origin.z
+          !index = fromIntegral $! (wm.bounds.height * wm.bounds.width * z) + (wm.bounds.width * y) + x
+          !len = MV.length wm.cells
+      in if index >= 0 && index < len
+         then index
+         else error $! "Bad attempt to index a world map with region `"
+              <> (show wm.bounds) <> "' at point `"
+              <> (show p) <> "'"
 
 -- | Reference a point in the world map. Return Nothing if no such point exists.
-refMap :: Prim :> es => Point -> WorldMap c -> Eff es (Maybe c)
-refMap (Point { x, y, z }) (WorldMap wm)
-    = (refVector z wm) `andThen` (refVector y) `andThen` (refVector x)
+refMap :: (HasCallStack, Prim :> es) => Point -> WorldMap c -> Eff es c
+refMap p wm
+    = MV.unsafeRead wm.cells $! pointToIndex p wm
 
 -- | Write a cell in a world map
-setMap :: Prim :> es => Point -> c -> WorldMap c -> Eff es (Maybe ())
-setMap (Point { x, y, z }) e (WorldMap wm)
-    = (refVector z wm) `andThen` (refVector y) `andThen`  (setVector x e)
+setMap :: (HasCallStack, Prim :> es) => Point -> c -> WorldMap c -> Eff es ()
+setMap p e wm
+    = MV.unsafeWrite wm.cells (pointToIndex p wm) e
 
 -- | Modify an element in a world map.
-modifyMap :: Prim :> es => (c -> c) -> Point -> WorldMap c -> Eff es (Maybe ())
+modifyMap :: Prim :> es => (c -> c) -> Point -> WorldMap c -> Eff es ()
 modifyMap f p wm
-    = (refMap p wm) `andThen` \e -> setMap p (f e) wm
+    = let index = pointToIndex p wm
+      in MV.unsafeModify wm.cells f index
 
 -- | Modify an element in a world map with a monadic action.
-modifyMapM :: Prim :> es => (c -> Eff es c) -> Point -> WorldMap c -> Eff es (Maybe ())
+modifyMapM :: Prim :> es => (c -> Eff es c) -> Point -> WorldMap c -> Eff es ()
 modifyMapM action p wm
-    = (refMap p wm) `andThen` (action >=> \e -> setMap p e wm)
+    = refMap p wm >>= action >>= \e -> setMap p e wm
+
+-- | Render a WorldMap into text. 3D rendering is achieved through rendering
+-- each horizontal plane of the map sequentially, starting from the topmost
+-- one.
+--
+-- A function from the map's cell type to Char needs to be supplied for this
+-- function. Unfortunately this does not allow for context-sensitive
+-- rendering.
+--
+-- This function is mostly useful for debugging purposes.
+renderMap :: forall c es. Prim :> es => (c -> Char) -> WorldMap c -> Eff es T.Text
+renderMap f wm
+    = let planeSize = fromIntegral $! wm.bounds.height * wm.bounds.width
+          planeVecs = [ MV.slice (n * planeSize) planeSize wm.cells
+                      | n <- [ 0 .. fromIntegral $! wm.bounds.depth - 1 ] ]
+      in foldM renderPlane T.empty planeVecs
+  where
+    renderPlane :: T.Text -> Vector c -> Eff es T.Text
+    renderPlane !acc !vec
+        = let rowSize = fromIntegral $! wm.bounds.width
+              rowVecs = [ MV.slice (n * rowSize) rowSize vec
+                        | n <- [ 0 .. fromIntegral $! wm.bounds.height - 1 ] ]
+          in foldM renderRow T.empty rowVecs
+             >>= \cnt -> pure $! acc <> "*******\n" <> cnt <> "\n"
+
+    renderRow :: T.Text -> Vector c -> Eff es T.Text
+    renderRow !acc !vec = do
+        row <- MV.foldl' (\a x -> a <> (T.singleton . f) x) T.empty vec
+        pure $! acc <> row <> "\n"
