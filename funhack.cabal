@@ -83,7 +83,6 @@ library
     import: general
     build-depends:
         hashable ^>=1.4.1,
-        primitive ^>=0.7.4,
         pqueue ^>=1.4.2,
         random ^>= 1.2.1.1,
         unordered-containers ^>=0.2.19,
@@ -92,7 +91,8 @@ library
         FunHack.DungeonGenerator,
         FunHack.Geometry,
         FunHack.PathFinding,
-        FunHack.Random
+        FunHack.Random,
+        FunHack.WorldMap
     other-modules:
     hs-source-dirs: lib
 
