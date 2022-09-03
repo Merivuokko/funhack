@@ -12,7 +12,6 @@ import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as HMap
 import Data.Hashable (Hashable)
 import Data.PQueue.Prio.Min qualified as PQ
-import Debug.Trace
 
 -- | A* algorith uses lots of state variables. This type makes the algorithm
 -- more readable.
@@ -62,7 +61,7 @@ aStarM isGoal heuristic adjacents startNode = do
     -- The actual A* implementation
     aStarM' :: AStarState a cost -> m (Maybe (cost, [a]))
     aStarM' state
-        = traceShowM ("aStarM': " ++ (show state)) >> case PQ.minView state.queue of
+        = case PQ.minView state.queue of
               Nothing -> pure $! Nothing
               Just ((node, travelCost), rest) ->
                   let state' = state { queue = rest }
@@ -82,11 +81,10 @@ aStarM isGoal heuristic adjacents startNode = do
         -- A monadic action returning a list of adjacent nodes associated with their travel cost
         adjacentNodesCosts :: m [(a, cost)]
         adjacentNodesCosts
-            = adjacents node >>= \a -> traceM ("Adjacents: " ++ (show a)) >> pure a
+            = adjacents node
             >>= pure . (fmap $ second (+ travelCost))
             >>= pure . filter (\(n, c) ->
-                                  ((<) <$> (Just c) <*> HMap.lookup n state.travelCosts) /= Just False)
-            >>= \f -> traceM ("Filtered adjacents: " ++ (show f)) >> pure f
+                                   ((<) <$> (Just c) <*> HMap.lookup n state.travelCosts) /= Just False)
 
         -- Resolve the shortest path once the goal has been found
         resolvePath :: m (cost, [a])
