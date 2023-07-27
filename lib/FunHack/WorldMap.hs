@@ -23,7 +23,7 @@ import GHC.Stack (HasCallStack)
 import FunHack.Geometry
 
 -- | A type alias for mutable vectors used by this module
-type Vector = MV.IOVector
+type Vector = MV.MVector PrimStateEff
 
 -- | A world map is a mapping from points to world cells.
 data WorldMap c = WorldMap {
