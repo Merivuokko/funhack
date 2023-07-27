@@ -86,15 +86,15 @@ renderMap f wm
     = let planeSize = fromIntegral $! wm.bounds.height * wm.bounds.width
           planeVecs = [ MV.slice (n * planeSize) planeSize wm.cells
                       | n <- [ 0 .. fromIntegral $! wm.bounds.depth - 1 ] ]
-      in foldM renderPlane T.empty planeVecs
+      in foldM renderPlane T.empty $! zip planeVecs [ wm.bounds.origin.z .. ]
   where
-    renderPlane :: T.Text -> Vector c -> Eff es T.Text
-    renderPlane !acc !vec
+    renderPlane :: T.Text -> (Vector c, Coord) -> Eff es T.Text
+    renderPlane !acc !(vec, z)
         = let rowSize = fromIntegral $! wm.bounds.width
               rowVecs = [ MV.slice (n * rowSize) rowSize vec
                         | n <- [ 0 .. fromIntegral $! wm.bounds.height - 1 ] ]
           in foldM renderRow T.empty rowVecs
-             >>= \cnt -> pure $! acc <> "*******\n" <> cnt <> "\n"
+             >>= \cnt -> pure $! acc <> "<< " <> (T.center (fromIntegral $! wm.bounds.width - 6) '*' $! " Plane " <> (T.pack $! show z) <> " ") <> " >>\n" <> cnt <> "\n"
 
     renderRow :: T.Text -> Vector c -> Eff es T.Text
     renderRow !acc !vec = do
