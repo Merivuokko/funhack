@@ -83,7 +83,7 @@ library
     import: general
     build-depends:
         hashable ^>=1.4.1,
-        pqueue ^>=1.4.3,
+        pqueue ^>=1.5.0,
         random ^>= 1.2.1.1,
         unordered-containers ^>=0.2.19,
         vector ^>=0.13
