@@ -18,7 +18,7 @@ import Data.PQueue.Prio.Min qualified as PQ
 data AStarState a cost = AStarState {
     -- | The queue of discovered nodes that may need to be (re-)expanded.
     --
-    -- The key of this mapping is the estimated cost of travelleing to the
+    -- The key of this mapping is the estimated cost of travelling to the
     -- target node through the node n (referred to by this key). This is often
     -- referred to as the fScore of a node.
     --
