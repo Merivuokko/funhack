@@ -37,7 +37,7 @@ data AStarState a cost = AStarState {
 -- This is a general implementation which works by calling supplied functions
 -- for querying all relevant information about the graph used.
 aStarM
-    :: forall a cost m. (Hashable a, Monad m, Ord cost, Num cost, Show cost, Show a)
+    :: forall a cost m. (Hashable a, Monad m, Ord cost, Num cost)
     => (a -> m Bool) -- ^ Determine if the supplied node is the goal node.
     -> (a -> m cost) -- ^ A heuristic action that returns the approximate cost
                      -- of reaching the goal node from the node supplied. This
