@@ -1,0 +1,76 @@
+// This is a Cabal file template that is used to generate the final cabal file
+// for this project using the C preprocessor. Use the `autogen` script from
+// the project root directory to do the generation.
+//
+// The following line needs to be the first non-C-style comment line in this
+// file due to Cabal restrictions.
+#include "cabal-prologue.inc"
+
+name: funhack
+version: 0.1.0.0
+synopsis: A fun roguelike game written in a functional language
+description:
+    Funhack is a fun programming experimentation – a roguelike game written in Haskell.
+    .
+    It is a toy program. The game is not (and will not) be playable. As said, it is an experimentation for personal testing.
+homepage: https://github.com/Merivuokko/funhack
+license: GPL-3.0-only
+license-file: LICENSE
+author: Aura Kelloniemi
+maintainer: kaura.dev@sange.fi
+extra-source-files:
+    AUTHORS.md
+    CHANGELOG.md
+    README.md
+    .hlint.yaml
+tested-with: GHC == { 9.6.2, 9.8.1 }
+             
+source-repository head
+    type: git
+    location: https://github.com/Merivuokko/funhack
+
+#include "cabal-common.inc"
+#include "cabal-dependencies.inc"
+                      
+common dep-funhack
+    build-depends:
+        funhack
+
+library
+    import:
+        options,
+        dep-base,
+        dep-effectful,
+        dep-hashable,
+        dep-pqueue,
+        dep-random,
+        dep-text,
+        dep-unordered-containers,
+        dep-vector
+    exposed-modules:
+        FunHack.DungeonGenerator,
+        FunHack.Geometry,
+        FunHack.PathFinding,
+        FunHack.Random,
+        FunHack.WorldMap
+    other-modules:
+    hs-source-dirs: lib
+
+executable funhack
+    import:
+        options,
+        dep-funhack,
+        dep-base,
+        dep-effectful,
+        dep-text
+    hs-source-dirs: src
+    main-is: Main.hs
+
+test-suite funhack-test
+    import:
+        options,
+        dep-base
+    type: exitcode-stdio-1.0
+    hs-source-dirs: test
+    main-is: Main.hs
+                           
