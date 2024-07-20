@@ -49,6 +49,7 @@ common options
             -Wno-missed-specialisations
             -Wno-missing-import-lists
             -Wno-missing-kind-signatures
+            -Wno-missing-role-annotations
             -Wno-missing-safe-haskell-mode
             -Wno-monomorphism-restriction
             -Wno-safe
