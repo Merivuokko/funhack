@@ -46,6 +46,7 @@ library
         ${unordered-containers},
         ${vector},
     exposed-modules:
+        FunHack.Cell,
         FunHack.DungeonGenerator,
         FunHack.Geometry,
         FunHack.PathFinding,
