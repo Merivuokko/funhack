@@ -84,8 +84,8 @@ common options
 library
     import: options
     build-depends:
-        base ^>= { 4.18, 4.19, 4.20 },
-        effectful-core ^>={ 2.2.2, 2.3 },
+        base >=4.18 && <4.22,
+        effectful-core >=2.2.2 && <2.6,
         hashable >=1.4.1 && <1.6,
         pqueue ^>=1.5.0,
         random ^>= 1.2.1.1,
@@ -106,8 +106,8 @@ executable funhack
     import: options
     build-depends:
         funhack,
-        base ^>= { 4.18, 4.19, 4.20 },
-        effectful-core ^>={ 2.2.2, 2.3 },
+        base >=4.18 && <4.22,
+        effectful-core >=2.2.2 && <2.6,
         text >=2.0 && <2.2,
     hs-source-dirs: src
     main-is: Main.hs
@@ -116,7 +116,7 @@ test-suite funhack-test
     import: options
     build-depends:
         funhack,
-        base ^>= { 4.18, 4.19, 4.20 },
+        base >=4.18 && <4.22,
     type: exitcode-stdio-1.0
     hs-source-dirs: test
     main-is: Main.hs
