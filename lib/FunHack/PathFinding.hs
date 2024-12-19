@@ -23,14 +23,13 @@ import Data.HashMap.Strict qualified as HMap
 import Data.Hashable (Hashable)
 import Data.PQueue.Prio.Min qualified as PQ
 
--- | A* algorith uses lots of state variables. This type makes the algorithm
--- more readable.
+-- | A* state. These values are created by `makeAStarState` and used (and returned) by the A* algorithm.
 data AStarState m a cost = AStarState
     { -- | The queue of discovered nodes that may need to be (re-)expanded.
       --
       -- The key of this mapping is the estimated cost of travelling to the
-      -- target node through the node n (referred to by this key). This is often
-      -- referred to as the fScore of a node.
+      -- target node through the node n. This is often referred to as the
+      -- fScore of a node.
       --
       -- The value of the mapping is a tuple with the node n and the lowest cost
       -- found so far to reach this n (the so called gScore).
@@ -50,7 +49,8 @@ data AStarState m a cost = AStarState
 -- | Determine the shortest path between two nodes in a graph. This is a
 -- general implementation which works by calling supplied functions for
 -- querying all relevant information about the graph used.
--- The result is a list which contains all possible paths with the shortest path first. The list elements are computed lazily.
+-- Returns (if found) the shortest path from the source to the destination
+-- node along with the cost of traveling the path.
 aStarM
     :: forall a cost m
      . (Hashable a, Monad m, Ord cost, Num cost)
@@ -64,7 +64,7 @@ aStarM
     -> (a -> m [(a, cost)])
     -- ^ An action that produces a list of all
     -- adjacent nodes to the node supplied to it,
-    -- along with the cost of reaching that node.
+    -- along with the cost of reaching that node from the source node.
     -> a
     -- ^ The starting node
     -> m (Maybe (cost, [a]))
@@ -74,10 +74,9 @@ aStarM
 aStarM isGoal heuristic adjacents startNode = do
     state <- makeAStarState isGoal heuristic adjacents startNode
     result <- runAStarM state
-    pure $! case result of
-        Nothing -> Nothing
-        Just (cost, path, _) -> Just (cost, path)
+    pure $! fmap (\(cost, path, _) -> (cost, path)) result
 
+-- | Create a starting state for runAStarM.
 makeAStarState
     :: forall a cost m
      . (Hashable a, Monad m, Num cost)
@@ -91,7 +90,7 @@ makeAStarState
     -> (a -> m [(a, cost)])
     -- ^ An action that produces a list of all
     -- adjacent nodes to the node supplied to it,
-    -- along with the cost of reaching that node.
+    -- along with the cost of reaching that node from the source node.
     -> a
     -- ^ The starting node
     -> m (AStarState m a cost)
@@ -107,17 +106,20 @@ makeAStarState isGoal heuristic adjacents startNode = do
               adjacents = adjacents
             }
 
--- | The actual A* implementation
+-- | Core A* algorithm. This works like aStarM except that the state is passed
+-- explicitly and returned as part of the result. This allows running the
+-- algorithm again and again in order to search for other (possibly
+-- longer)paths to a goal node.
 runAStarM
     :: forall a cost m
      . (Hashable a, Monad m, Ord cost, Num cost)
     => AStarState m a cost
     -> m (Maybe (cost, [a], AStarState m a cost))
-runAStarM origState =
-    case PQ.minView origState.queue of
+runAStarM initState =
+    case PQ.minView initState.queue of
         Nothing -> pure Nothing
         Just ((node, travelCost), rest) ->
-            let state' = origState {queue = rest}
+            let state' = initState {queue = rest}
             in  searchFrom state' node travelCost
   where
     -- Search path from a given node
@@ -133,12 +135,12 @@ runAStarM origState =
         -- Search through all adjacent nodes the current node
         searchAdjacents :: m (AStarState m a cost)
         searchAdjacents =
-            adjacentNodesCosts
+            adjacentNodesAndCosts
                 >>= foldM (enqueue node) state
 
         -- A monadic action returning a list of adjacent nodes associated with their travel cost
-        adjacentNodesCosts :: m [(a, cost)]
-        adjacentNodesCosts =
+        adjacentNodesAndCosts :: m [(a, cost)]
+        adjacentNodesAndCosts =
             state.adjacents node
                 >>= pure . (fmap $ second (+ travelCost))
                 >>= pure
